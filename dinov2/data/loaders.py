@@ -10,9 +10,8 @@ from typing import Any, Callable, List, Optional, TypeVar
 import torch
 from torch.utils.data import Sampler
 
-from dinov2.data.datasets.nlb_dataset import NLBDataset
+from . import datasets
 
-from .datasets import ImageNet, ImageNet22k
 from .samplers import EpochSampler, InfiniteSampler, ShardedInfiniteSampler
 
 
@@ -54,16 +53,11 @@ def _parse_dataset_str(dataset_str: str):
         assert key in ("root", "extra", "split")
         kwargs[key] = value
 
-    if name == "ImageNet":
-        class_ = ImageNet
-        if "split" in kwargs:
-            kwargs["split"] = ImageNet.Split[kwargs["split"]]
-    elif name == "ImageNet22k":
-        class_ = ImageNet22k
-    elif name == "NLBDataset":
-        class_ = NLBDataset
-    else:
+    class_ = getattr(datasets, name, None)
+    if class_ is None:
         raise ValueError(f'Unsupported dataset "{name}"')
+    if name == "ImageNet" and "split" in kwargs:
+        kwargs["split"] = ImageNet.Split[kwargs["split"]]
 
     return class_, kwargs
 

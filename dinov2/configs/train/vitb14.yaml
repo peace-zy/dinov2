@@ -5,8 +5,8 @@ ibot:
   separate_head: true
   head_n_prototypes: 131072
 train:
-  batch_size_per_gpu: 200
-  dataset_path: NLBDataset:root=/valohai/inputs/data/object/
+  batch_size_per_gpu: 32
+  dataset_path: RecursiveImageDataset:root=~/.datasets
   centering: sinkhorn_knopp
 student:
   arch: vit_base

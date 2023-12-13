@@ -1,6 +1,6 @@
 # this corresponds to the default config
 train:
-  dataset_path: NLBDataset:root=/valohai/inputs/data/object/
+  dataset_path: RecursiveImageDataset:root=~/.datasets
   batch_size_per_gpu: 200
 student:
   arch: vit_base

@@ -7,3 +7,4 @@ fvcore
 iopath
 xformers==0.0.18
 submitit
+fastai==2.7.13

@@ -55,7 +55,7 @@ For python-based LazyConfig, use "path.key=value".
         type=str,
         help="Output directory to save logs and checkpoints",
     )
-    parser.add_argument("--local-rank", default=0, type=int, help="Variable for distributed computing.") 
+    parser.add_argument("--local-rank", default=0, type=int, help="Variable for distributed computing.")
 
     return parser
 
@@ -316,7 +316,7 @@ def main(args):
             + 1
         )
         return do_test(cfg, model, f"manual_{iteration}")
-    
+
     logger.info("Cfg:\n{}".format(cfg))
 
     do_train(cfg, model, resume=not args.no_resume)
