@@ -1,4 +1,4 @@
-from fastai.vision.all import get_image_files, Path
+from fastai.vision.all import Path, get_image_files, verify_images
 
 from typing import Any, Optional, Callable, Tuple
 
@@ -10,6 +10,7 @@ from dinov2.data.datasets.extended import ExtendedVisionDataset
 class RecursiveImageDataset(ExtendedVisionDataset):
     def __init__(self,
                  root: str,
+                 verify_images: bool = False,
                  transforms: Optional[Callable] = None,
                     transform: Optional[Callable] = None,
                     target_transform: Optional[Callable] = None) -> None:
@@ -17,7 +18,14 @@ class RecursiveImageDataset(ExtendedVisionDataset):
         super().__init__(root, transforms, transform, target_transform)
 
         self.root = Path(root).expanduser()
-        self.image_paths = get_image_files(self.root)
+        image_paths = get_image_files(self.root)
+        invalid_images = set()
+        if verify_images:
+            print("Verifying images. This ran at ~100 images/sec/cpu for me. Probably depends heavily on disk perf.")
+            invalid_images = set(verify_images(image_paths))
+            print("Skipping invalid images:", invalid_images)
+        self.image_paths = [p for p in image_paths if p not in invalid_images]
+
 
     def get_image_data(self, index: int) -> bytes:  # should return an image as an array
 

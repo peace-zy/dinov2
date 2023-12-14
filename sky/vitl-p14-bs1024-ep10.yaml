@@ -1,0 +1,57 @@
+name: dinov2-vitl-p14-bs1024-ep10
+num_nodes: 2
+resources:
+  # This needs to be the same region as your checkpoints bucket or you'll get an error reading config.yaml.
+  region: us-central1
+  # We want a batch size of 1024, so we can do either 8 A100-80GB w/ bs128 or 32 A100-40GB w/ bs32.
+  accelerators: A100-80GB:4
+  disk_size: 300 # Adjust to fit your dataset
+  disk_tier: high # You want the best disk you can get
+
+# Paths are relative to the directory where the skypilot command is run from.
+# Make sure you're in dinov2/sky when you run `skypilot launch`.
+workdir: ..
+
+setup: |
+  sudo mv /usr/local/cuda /usr/local/cuda-old # Required. Skypilot installs it's own cuda which causes ld library issues.
+  sudo apt install snapd -y
+  sudo snap install nvtop # Optional, but lets you visualize gpu utilization.
+  sudo snap connect nvtop:process-control
+  sudo snap connect nvtop:hardware-observe
+  sudo snap connect nvtop:system-observe
+  sudo -v ; curl https://rclone.org/install.sh | sudo bash # Optional, but lets you copy datasets from gcs.
+  rclone config create gcs "google cloud storage" --non-interactive
+  mkdir -p ~/.datasets
+  rclone --exclude "*mask.png" --exclude "*.avi" --exclude "*.mp4" copy --transfers=$((32 * $(nproc --all))) --checkers=$((64 * $(nproc --all))) --buffer-size=128M "gcs:<dataset-bucket-name-p1>" ~/.datasets/<dataset-bucket-name-p1> --progress --stats-one-line
+  rclone --exclude "*mask.png" --exclude "*.avi" --exclude "*.mp4" copy --transfers=$((32 * $(nproc --all))) --checkers=$((64 * $(nproc --all))) --buffer-size=128M "gcs:<dataset-bucket-name-p2>" ~/.datasets/<dataset-bucket-name-p2> --progress --stats-one-line
+  pip install -r requirements.txt # Required. Don't skip
+  pip install -e .[dev]           # Required. Don't skip
+
+# Typical use: make use of resources, such as running training.
+# Invoked under the workdir (i.e., can use its files).
+run: |
+  echo "Starting Training"
+  export NUM_NODES=`echo "$SKYPILOT_NODE_IPS" | wc -l`
+  export MASTER_ADDR=`echo "$SKYPILOT_NODE_IPS" | head -n1`
+  torchrun \
+    --nproc_per_node=${SKYPILOT_NUM_GPUS_PER_NODE} \
+    --node_rank=${SKYPILOT_NODE_RANK} \
+    --nnodes=${NUM_NODES} \
+    --master_addr=${MASTER_ADDR} \
+    --master_port=8008 \
+    dinov2/train/train.py \
+    --config-file=dinov2/configs/train/vitl14_ep10.yaml \
+    --output-dir=/checkpoints/dinov2-vitl-p14-bs1024-ep10
+
+file_mounts:
+  /checkpoints:
+    name: <your checkpoints bucket name> # e.g. mycompany-checkpoints-prod
+    store: gcs
+    persistent: True
+    mode: MOUNT
+  # NB: While _technically_ you can MOUNT your datasets bucket, it's not recommended.
+  # You'll get much much better training performance if you copy your datasets to local SSDs.
+  # And you'll save a TON on gcs api costs. While skypilot has a bucket COPY mode, it uses
+  # gsutil rsync under the hood which is *very* slow if your bucket contains a large number
+  # of small files. If you have large zips/tarballs of your dataset, COPY should work fine.
+  # Just don't forget to extract them before training.
