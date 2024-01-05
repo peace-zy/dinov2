@@ -1,0 +1,1 @@
+python convert_dinov2_to_hf.py --model_name dinov2_vitb14_offline_train.pt --pytorch_dump_folder_path hf_format/dinov2_vitb14_offline
