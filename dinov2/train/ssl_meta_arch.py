@@ -6,6 +6,7 @@
 from functools import partial
 import logging
 
+import json
 import torch
 from torch import nn
 
@@ -41,11 +42,23 @@ class SSLMetaArch(nn.Module):
         student_model_dict["backbone"] = student_backbone
         teacher_model_dict["backbone"] = teacher_backbone
         logger.info(f"OPTIONS -- architecture : embed_dim: {embed_dim}")
+        self.a = None
 
         if cfg.student.pretrained_weights:
             chkpt = torch.load(cfg.student.pretrained_weights)
-            logger.info(f"OPTIONS -- pretrained weights: loading from {cfg.student.pretrained_weights}")
-            student_backbone.load_state_dict(chkpt["model"], strict=False)
+            logger.info(f"\033[32mOPTIONS -- pretrained weights: loading from {cfg.student.pretrained_weights}\033[0m")
+            #student_backbone.load_state_dict(chkpt["model"], strict=False)
+            chkpt["pos_embed"] = chkpt["pos_embed"][:, 0:student_backbone.state_dict()["pos_embed"].shape[1], :]
+            #student_backbone.load_state_dict(chkpt, strict=False)
+            if cfg.student.hf_to_train_map_file:
+                with open(cfg.student.hf_to_train_map_file, "r") as f:
+                    map_dict = json.load(f)
+                for old, new in map_dict["hub_to_train"].items():
+                    val = chkpt.pop(old)
+                    chkpt[new] = val
+
+            student_backbone.load_state_dict(chkpt)
+            self.a = student_backbone.state_dict()
 
         self.embed_dim = embed_dim
         self.dino_out_dim = cfg.dino.head_n_prototypes
@@ -388,12 +401,16 @@ class SSLMetaArch(nn.Module):
         return all_params_groups
 
     def prepare_for_distributed_training(self):
-        logger.info("DISTRIBUTED FSDP -- preparing model for distributed training")
+        logger.info("\033[32mDISTRIBUTED FSDP -- preparing model for distributed training\033[0m")
         if has_batchnorms(self.student):
             raise NotImplementedError
         # below will synchronize all student subnetworks across gpus:
         for k, v in self.student.items():
             self.teacher[k].load_state_dict(self.student[k].state_dict())
+            """
+            for kk, vv in self.teacher[k].state_dict().items():
+                print("{}: {}".format(kk, torch.sum(vv.cpu() - self.a[kk])))
+            """
             student_model_cfg = self.cfg.compute_precision.student[k]
             self.student[k] = get_fsdp_wrapper(student_model_cfg, modules_to_wrap={BlockChunk})(self.student[k])
             teacher_model_cfg = self.cfg.compute_precision.teacher[k]

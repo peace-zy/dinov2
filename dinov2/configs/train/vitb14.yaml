@@ -1,3 +1,6 @@
+
+MODEL:
+  WEIGHTS: ''
 dino:
   head_n_prototypes: 131072
   head_bottleneck_dim: 384
@@ -5,8 +8,9 @@ ibot:
   separate_head: true
   head_n_prototypes: 131072
 train:
-  batch_size_per_gpu: 32
-  dataset_path: RecursiveImageDataset:root=~/.datasets
+  #OFFICIAL_EPOCH_LENGTH: 1
+  batch_size_per_gpu: 64
+  dataset_path: RecursiveImageDataset:root=/data/nfs-ten9/nfs/zhangyan461/dataset/vlm/visual_instruction_tuning/change:check_images=True
   centering: sinkhorn_knopp
 student:
   arch: vit_base
@@ -14,13 +18,14 @@ student:
   drop_path_rate: 0.4
   ffn_layer: swiglufused
   block_chunks: 4
+  pretrained_weights: '/aistudio/workspace/research/dinov2_csaroff/models/dinov2_vitb14_pretrain.pth'
 teacher:
   momentum_teacher: 0.994
 optim:
-  epochs: 500
+  epochs: 10
   weight_decay_end: 0.2
   base_lr: 2.0e-04  # learning rate for a batch size of 1024
-  warmup_epochs: 80
+  warmup_epochs: 2
   layerwise_decay: 1.0
 crops:
   local_crops_size: 98

@@ -50,7 +50,7 @@ def _parse_dataset_str(dataset_str: str):
 
     for token in tokens[1:]:
         key, value = token.split("=")
-        assert key in ("root", "extra", "split")
+        assert key in ("root", "extra", "split", "check_images")
         kwargs[key] = value
 
     class_ = getattr(datasets, name, None)

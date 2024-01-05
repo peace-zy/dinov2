@@ -6,7 +6,7 @@ ibot:
   head_n_prototypes: 131072
 train:
   batch_size_per_gpu: 128
-  dataset_path: RecursiveImageDataset:root=~/.datasets
+  dataset_path: RecursiveImageDataset:root=/data/nfs-ten9/nfs/zhangyan461/dataset/vlm/visual_instruction_tuning/change
   centering: sinkhorn_knopp
 student:
   arch: vit_large
